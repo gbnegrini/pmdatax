@@ -1,0 +1,2 @@
+biopython==1.76
+pubmed-lookup==0.2.3
