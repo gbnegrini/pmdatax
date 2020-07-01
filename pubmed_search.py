@@ -12,7 +12,6 @@ class Database(object):
     def __create_connection(self, database_name: str) -> sqlite3.Connection:
         database = f'{database_name}.db'
         conn = sqlite3.connect(database)
-        conn.row_factory = lambda cursor, row: row[0]
         return conn
 
     def _create_tables(self):
@@ -38,6 +37,33 @@ class Database(object):
                 FOREIGN KEY(pmid) REFERENCES pmids(pmid)
             );""")
 
+            self._connection.commit()
+        finally:
+            cursor.close()
+    
+    def insert_id(self, id: int):
+        try:
+            cursor = self._connection.cursor()
+            cursor.execute("INSERT INTO pmids (pmid, publication_fetched) VALUES (?, ?)", [id, 0])
+            self._connection.commit()
+        finally:
+            cursor.close()
+    
+    def insert_publication(self, id: int, publication: Publication):
+        try:
+            cursor = self._connection.cursor()
+            cursor.execute("""INSERT INTO publications (pmid, title, authors, journal, year, month, day, abstract)
+                                    VALUES (?,?,?,?,?,?,?,?)""",
+                                    [id,publication.title, publication.authors, publication.journal,
+                                    publication.year, publication.month, publication.day, publication.abstract])
+            self._connection.commit()
+        finally:
+            cursor.close()
+
+    def update_fetched_publication(self, id: int):
+        try:
+            cursor = self._connection.cursor()
+            cursor.execute("""UPDATE pmids SET publication_fetched = 1 WHERE pmid = ?""", [id])
             self._connection.commit()
         finally:
             cursor.close()
