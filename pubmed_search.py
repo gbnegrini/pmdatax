@@ -1,6 +1,8 @@
 import argparse
 import sqlite3
 import os
+from Bio import Entrez
+from pubmed_lookup import PubMedLookup, Publication
 
 class Database(object):
     def __init__(self, database_name: str):
@@ -39,6 +41,24 @@ class Database(object):
             self._connection.commit()
         finally:
             cursor.close()
+
+class PubmedSearch(object):
+    def __init__(self, email: str):
+        self._email = email
+
+    def get_ids(self, search_query: str, start: int = 0, max: int = 100000) -> list:
+        Entrez.email = self._email
+        handle = Entrez.esearch(
+            db="pubmed", term=search_query, retstart=start, retmax=max)
+        record = Entrez.read(handle)
+        return list(record["IdList"])
+
+    def get_publication(self, pubmedID: str) -> Publication:
+        try:
+            lookup = PubMedLookup(pubmedID, self._email)
+            return Publication(lookup)
+        except TypeError:
+            return
 
 if __name__ == 'main':
     pass
