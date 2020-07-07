@@ -68,6 +68,18 @@ class Database(object):
             self._connection.commit()
         finally:
             cursor.close()
+    
+    def get_new_ids(self):
+        try:
+            cursor = self._connection.cursor()
+            cursor.execute("""SELECT pmid FROM pmids WHERE new = 1""")
+            self._connection.commit()
+            result = cursor.fetchall()
+            cursor.close()
+            ids = [id[0] for id in result]
+            return ids
+        finally:
+            cursor.close()
 
 class PubmedSearch(object):
     def __init__(self, email: str):
@@ -118,4 +130,7 @@ if __name__ == '__main__':
     logging.info('Saving PMIDs to the database...')
     for id in pubmed_ids:
         database.insert_id(id)
-    logging.info('PMIDs saved.')
+    pubmed_ids = database.get_new_ids()
+    logging.info(f'There are {len(pubmed_ids)} PMIDs marked as new in the database.')
+
+    

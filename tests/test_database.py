@@ -110,3 +110,30 @@ def test_update_fetched_publication_failed(database):
     assert result[0][0] == id
     assert result[0][1] == 0
     assert result[0][2] == 1
+
+def test_get_new_ids(database):
+    id1 = 22331888
+    id2 = 22331889
+    database.insert_id(id1)
+    database.insert_id(id2)
+
+    new_pmids = database.get_new_ids()
+    cursor = database._connection.cursor()
+    cursor.execute("""SELECT pmid FROM pmids WHERE new = 1""")
+    result = cursor.fetchall()
+    cursor.close()
+
+    assert len(result) == 2
+    assert new_pmids[0] == result[0][0]
+    assert new_pmids[1] == result[1][0]
+
+    database.update_fetched_publication(id1, new=0)
+
+    new_pmids = database.get_new_ids()
+    cursor = database._connection.cursor()
+    cursor.execute("""SELECT pmid FROM pmids WHERE new = 1""")
+    result = cursor.fetchall()
+    cursor.close()
+
+    assert len(result) == 1
+    assert new_pmids[0] == result[0][0]
