@@ -3,6 +3,7 @@ import sqlite3
 import os
 from Bio import Entrez
 from pubmed_lookup import PubMedLookup, Publication
+import logging
 
 class Database(object):
     def __init__(self, database: str):
@@ -102,3 +103,19 @@ if __name__ == '__main__':
     parser.add_argument('-r', '--retry', action='store_true',
                         help='Try to fetch again any PMIDs marked as failed in the database.', default=False)
     args = parser.parse_args()
+
+    logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
+
+    if args.output:
+        database = Database(args.output)
+    else:
+        database = Database(f'{args.search_query}.db')
+    
+    search = PubmedSearch(args.email)
+    logging.info(f'Getting PubMed IDs (PMID) for articles related to search query "{args.search_query}"...')
+    pubmed_ids = search.get_ids(args.search_query, args.start, args.max)
+    logging.info(f'{len(pubmed_ids)} PMIDs where found.')
+    logging.info('Saving PMIDs to the database...')
+    for id in pubmed_ids:
+        database.insert_id(id)
+    logging.info('PMIDs saved.')
