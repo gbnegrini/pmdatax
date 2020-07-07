@@ -5,12 +5,11 @@ from Bio import Entrez
 from pubmed_lookup import PubMedLookup, Publication
 
 class Database(object):
-    def __init__(self, database_name: str):
-        self._connection = self.__create_connection(database_name)
+    def __init__(self, database: str):
+        self._connection = self.__create_connection(database)
         self._create_tables()
 
-    def __create_connection(self, database_name: str) -> sqlite3.Connection:
-        database = f'{database_name}.db'
+    def __create_connection(self, database: str) -> sqlite3.Connection:
         conn = sqlite3.connect(database)
         return conn
 
@@ -21,7 +20,8 @@ class Database(object):
             cursor.execute("""
             CREATE TABLE IF NOT EXISTS pmids (
                 pmid INTEGER NOT NULL PRIMARY KEY,
-                publication_fetched BOOLEAN NOT NULL CHECK (publication_fetched IN (0,1))
+                new BOOLEAN NOT NULL CHECK (new IN (0,1)),
+                failed BOOLEAN NOT NULL CHECK (failed IN (0,1))
             );""")
 
             cursor.execute("""
@@ -44,7 +44,7 @@ class Database(object):
     def insert_id(self, id: int):
         try:
             cursor = self._connection.cursor()
-            cursor.execute("INSERT INTO pmids (pmid, publication_fetched) VALUES (?, ?)", [id, 0])
+            cursor.execute("INSERT INTO pmids (pmid, new, failed) VALUES (?, ?, ?)", [id, 1, 0])
             self._connection.commit()
         finally:
             cursor.close()
@@ -60,10 +60,10 @@ class Database(object):
         finally:
             cursor.close()
 
-    def update_fetched_publication(self, id: int):
+    def update_fetched_publication(self, id: int, new:int=0, failed:int=0):
         try:
             cursor = self._connection.cursor()
-            cursor.execute("""UPDATE pmids SET publication_fetched = 1 WHERE pmid = ?""", [id])
+            cursor.execute("""UPDATE pmids SET new = ?, failed = ? WHERE pmid = ?""", [new, failed, id])
             self._connection.commit()
         finally:
             cursor.close()
@@ -86,5 +86,5 @@ class PubmedSearch(object):
         except TypeError:
             return
 
-if __name__ == 'main':
+if __name__ == '__main__':
     pass

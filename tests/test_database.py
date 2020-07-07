@@ -6,7 +6,7 @@ import os
 
 @pytest.fixture
 def database_name():
-    return 'test'
+    return 'test.db'
 
 @pytest.fixture
 def database(database_name):
@@ -15,9 +15,6 @@ def database(database_name):
 @pytest.fixture
 def pubmed_search():
     return PubmedSearch('gixos30110@lowdh.com') #fake temp mail
-
-def test_db_instance(database_name, database):
-    assert os.path.isfile(f'{database_name}.db')
 
 def test_create_connection(database):
     assert type(database._connection) is sqlite3.Connection
@@ -40,7 +37,8 @@ def test_insert_id(database):
     cursor.close()
     assert len(result) == 1
     assert result[0][0] == id
-    assert result[0][1] == 0
+    assert result[0][1] == 1
+    assert result[0][2] == 0
 
 def test_insert_id_is_unique(database):
     with pytest.raises(sqlite3.IntegrityError):
@@ -74,7 +72,10 @@ def test_update_fetched_publication(database):
     cursor.execute("""SELECT * FROM pmids WHERE pmid = ?""", [id])
     result = cursor.fetchall()
     cursor.close()
-    assert result[0][1] == 0
+    assert len(result) == 1
+    assert result[0][0] == id
+    assert result[0][1] == 1
+    assert result[0][2] == 0
 
     database.update_fetched_publication(id)
 
@@ -82,4 +83,30 @@ def test_update_fetched_publication(database):
     cursor.execute("""SELECT * FROM pmids WHERE pmid = ?""", [id])
     result = cursor.fetchall()
     cursor.close()
+    assert len(result) == 1
+    assert result[0][0] == id
+    assert result[0][1] == 0
+    assert result[0][2] == 0
+
+def test_update_fetched_publication_failed(database):
+    id = 22331879
+    database.insert_id(id)
+    cursor = database._connection.cursor()
+    cursor.execute("""SELECT * FROM pmids WHERE pmid = ?""", [id])
+    result = cursor.fetchall()
+    cursor.close()
+    assert len(result) == 1
+    assert result[0][0] == id
     assert result[0][1] == 1
+    assert result[0][2] == 0
+
+    database.update_fetched_publication(id, failed=1)
+
+    cursor = database._connection.cursor()
+    cursor.execute("""SELECT * FROM pmids WHERE pmid = ?""", [id])
+    result = cursor.fetchall()
+    cursor.close()
+    assert len(result) == 1
+    assert result[0][0] == id
+    assert result[0][1] == 0
+    assert result[0][2] == 1
