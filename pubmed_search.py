@@ -87,4 +87,18 @@ class PubmedSearch(object):
             return
 
 if __name__ == '__main__':
-    pass
+    
+    parser = argparse.ArgumentParser(description='Get publication data from PubMed.')
+    parser.add_argument(
+        'email', type=str, help='Identify yourself so NCBI can contact you in case of excessive requests')
+    parser.add_argument('search_query', type=str,
+                        help='Search term for Pubmed database')
+    parser.add_argument('-s', '--start', type=int,
+                        help='Sequential index of the first PMID in the retrieved set. (default: 0)', default=0)
+    parser.add_argument('-m', '--max', type=int,
+                        help='Total number of PMIDs from the retrieved set. Max: 100,000 records. (default: 100000)', default=100000)
+    parser.add_argument('-o', '--output', type=str,
+                        help='Specify an existing database. (default: create or connect to a database named after the search query).')                    
+    parser.add_argument('-r', '--retry', action='store_true',
+                        help='Try to fetch again any PMIDs marked as failed in the database.', default=False)
+    args = parser.parse_args()
