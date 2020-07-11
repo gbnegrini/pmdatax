@@ -111,6 +111,8 @@ def test_update_fetched_publication_failed(database):
     assert result[0][1] == 0
     assert result[0][2] == 1
 
+    database.update_fetched_publication(id, failed=0)
+
 def test_get_new_ids(database):
     id1 = 22331888
     id2 = 22331889
@@ -124,6 +126,7 @@ def test_get_new_ids(database):
     cursor.close()
 
     assert len(result) == 2
+    assert len(new_pmids) == 2
     assert new_pmids[0] == result[0][0]
     assert new_pmids[1] == result[1][0]
 
@@ -136,4 +139,22 @@ def test_get_new_ids(database):
     cursor.close()
 
     assert len(result) == 1
+    assert len(new_pmids) == 1
     assert new_pmids[0] == result[0][0]
+
+def test_get_failed_ids(database):
+    id1 = 22331900
+    id2 = 22331901
+    database.insert_id(id1)
+    database.insert_id(id2)
+    database.update_fetched_publication(id1, new=0, failed=1)
+
+    failed_pmids = database.get_failed_ids()
+    cursor = database._connection.cursor()
+    cursor.execute("""SELECT pmid FROM pmids WHERE failed = 1""")
+    result = cursor.fetchall()
+    cursor.close()
+
+    assert len(result) == 1
+    assert len(failed_pmids) == 1
+    assert failed_pmids[0] == result[0][0]

@@ -80,6 +80,18 @@ class Database(object):
             return ids
         finally:
             cursor.close()
+    
+    def get_failed_ids(self):
+        try:
+            cursor = self._connection.cursor()
+            cursor.execute("""SELECT pmid FROM pmids WHERE failed = 1""")
+            self._connection.commit()
+            result = cursor.fetchall()
+            cursor.close()
+            ids = [id[0] for id in result]
+            return ids
+        finally:
+            cursor.close()
 
 class PubmedSearch(object):
     def __init__(self, email: str):
@@ -135,8 +147,13 @@ if __name__ == '__main__':
         except sqlite3.IntegrityError:
             continue
 
-    pubmed_ids = database.get_new_ids()
-    print(f'There are {len(pubmed_ids)} PMIDs marked as new in the database.')
+    if args.retry:
+        pubmed_ids = database.get_new_ids() + database.get_failed_ids()
+        print(f'{len(database.get_new_ids())} PMIDs are marked as NEW in the database.')
+        print(f'{len(database.get_failed_ids())} PMIDs are marked as FAILED in the database.')
+    else:
+        pubmed_ids = database.get_new_ids()
+        print(f'{len(pubmed_ids)} PMIDs are marked as NEW in the database.')
 
     print('Fetching publications...\n')
     count_success = 0
