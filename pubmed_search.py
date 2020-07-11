@@ -93,11 +93,9 @@ class PubmedSearch(object):
         return list(record["IdList"])
 
     def get_publication(self, pubmedID: str) -> Publication:
-        try:
-            lookup = PubMedLookup(pubmedID, self._email)
-            return Publication(lookup)
-        except TypeError:
-            return
+        lookup = PubMedLookup(pubmedID, self._email)
+        return Publication(lookup)
+
 
 if __name__ == '__main__':
     
@@ -116,21 +114,47 @@ if __name__ == '__main__':
                         help='Try to fetch again any PMIDs marked as failed in the database.', default=False)
     args = parser.parse_args()
 
-    logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
+    logging.basicConfig(filename=f'{args.search_query}.log', format='%(asctime)s - %(message)s', level=logging.INFO)
+    logging.info(f'Search query: {args.search_query}')
 
     if args.output:
         database = Database(args.output)
     else:
         database = Database(f'{args.search_query}.db')
-    
-    search = PubmedSearch(args.email)
-    logging.info(f'Getting PubMed IDs (PMID) for articles related to search query "{args.search_query}"...')
-    pubmed_ids = search.get_ids(args.search_query, args.start, args.max)
-    logging.info(f'{len(pubmed_ids)} PMIDs where found.')
-    logging.info('Saving PMIDs to the database...')
-    for id in pubmed_ids:
-        database.insert_id(id)
-    pubmed_ids = database.get_new_ids()
-    logging.info(f'There are {len(pubmed_ids)} PMIDs marked as new in the database.')
 
+    print(f'Getting PubMed IDs (PMID) for articles related to search query "{args.search_query}"...')
+    search = PubmedSearch(args.email)
+    pubmed_ids = search.get_ids(args.search_query, args.start, args.max)
+    print(f'{len(pubmed_ids)} PMIDs where found.')
+    logging.info(f'{len(pubmed_ids)} PMIDs where found.')
     
+    print('Saving PMIDs to the database...')
+    for id in pubmed_ids:
+        try:
+            database.insert_id(id)
+        except sqlite3.IntegrityError:
+            continue
+
+    pubmed_ids = database.get_new_ids()
+    print(f'There are {len(pubmed_ids)} PMIDs marked as new in the database.')
+
+    print('Fetching publications...\n')
+    count_success = 0
+    count_failed = 0
+    total = len(pubmed_ids)
+
+    for id in pubmed_ids:
+        try:
+            publication = search.get_publication(id)
+            database.insert_publication(id, publication)
+            database.update_fetched_publication(id)
+            count_success = count_success + 1
+        except (TimeoutError, RuntimeError, TypeError):
+            logging.exception(f'ID: {id}')
+            database.update_fetched_publication(id, failed=1)
+            count_failed = count_failed + 1
+        finally:
+            print(f'\tSuccessful: {count_success} | Failed: {count_failed} | Remaining: {total-count_success-count_failed}', end='\r', flush=True)
+    
+    print("\nFinished!")
+    logging.info(f'Successful: {count_success} | Failed: {count_failed}')
