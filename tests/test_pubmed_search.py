@@ -1,7 +1,7 @@
 import pytest
 from pubmed_search import PubmedSearch
 
-class TestPub():
+class DummyPub():
     title = 'Arabidopsis synchronizes jasmonate-mediated defense with insect circadian behavior.'
     authors = 'Goodspeed D, Chehab EW, Min-Venditti A, Braam J, Covington MF'
     journal = 'Proc Natl Acad Sci U S A'
@@ -30,16 +30,16 @@ def test_get_ids(pubmed_search, search_query, start, max):
     assert len(result) == max
 
 def test_get_publication(pubmed_search):
-    test_pub = TestPub()
+    dummy_pub = DummyPub()
     pub = pubmed_search.get_publication(22331878)
-    assert pub.title == test_pub.title
-    assert pub.authors == test_pub.authors
-    assert pub.journal == test_pub.journal
-    assert pub.year == test_pub.year
-    assert pub.month == test_pub.month
-    assert pub.day == test_pub.day
-    assert pub.url == test_pub.url
-    assert pub.pubmed_url == test_pub.pubmed_url
-    assert pub.cite() == test_pub.citation
-    assert pub.cite_mini() == test_pub.minicitation
-    assert pub.abstract == test_pub.abstract
+    assert pub.title == dummy_pub.title
+    assert pub.authors == dummy_pub.authors
+    assert pub.journal == dummy_pub.journal
+    assert pub.year == dummy_pub.year
+    assert pub.month == dummy_pub.month
+    assert pub.day == dummy_pub.day
+    assert pub.url == dummy_pub.url
+    assert pub.pubmed_url == dummy_pub.pubmed_url
+    assert pub.cite() == dummy_pub.citation
+    assert pub.cite_mini() == dummy_pub.minicitation
+    assert pub.abstract == dummy_pub.abstract
