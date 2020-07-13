@@ -4,6 +4,7 @@ import os
 from Bio import Entrez
 from pubmed_lookup import PubMedLookup, Publication
 import logging
+import sys
 
 class Database(object):
     def __init__(self, database: str):
@@ -108,9 +109,7 @@ class PubmedSearch(object):
         lookup = PubMedLookup(pubmedID, self._email)
         return Publication(lookup)
 
-
-if __name__ == '__main__':
-    
+def _parse_args(args: list):
     parser = argparse.ArgumentParser(description='Get publication data from PubMed.')
     parser.add_argument(
         'email', type=str, help='Identify yourself so NCBI can contact you in case of excessive requests')
@@ -124,7 +123,11 @@ if __name__ == '__main__':
                         help='Specify an existing database. (default: create or connect to a database named after the search query).')                    
     parser.add_argument('-r', '--retry', action='store_true',
                         help='Try to fetch again any PMIDs marked as failed in the database.', default=False)
-    args = parser.parse_args()
+    return parser.parse_args()
+
+if __name__ == '__main__':
+    
+    args = _parse_args(sys.argv[1:])
 
     logging.basicConfig(filename=f'{args.search_query}.log', format='%(asctime)s - %(message)s', level=logging.INFO)
     logging.info(f'Search query: {args.search_query}')
@@ -171,7 +174,7 @@ if __name__ == '__main__':
             database.update_fetched_publication(id, failed=1)
             count_failed = count_failed + 1
         finally:
-            print(f'\tSuccessful: {count_success} | Failed: {count_failed} | Remaining: {total-count_success-count_failed}', end='\r', flush=True)
+            print(f'  Successful: {count_success} | Failed: {count_failed} | Remaining: {total-count_success-count_failed}', end='\r', flush=True)
     
     print("\nFinished!")
     logging.info(f'Successful: {count_success} | Failed: {count_failed}')
