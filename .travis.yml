@@ -9,4 +9,3 @@ script:
   - pytest
 os:
   - linux
-  - osx
