@@ -11,7 +11,7 @@ def database_name():
 def empty_database(database_name):
     db = Database(database_name)
     yield db
-    db._connection.close()
+    db.connection.close()
     os.remove(database_name)
 
 @pytest.fixture
@@ -26,14 +26,14 @@ def dummy_database(database_name, pubmed_search):
     db.insert_id(22331879)
     db.insert_publication(22331879, pubmed_search.get_publication(22331879))
     yield db
-    db._connection.close()
+    db.connection.close()
     os.remove(database_name)
 
-def test_create_connection(empty_database):
-    assert type(empty_database._connection) is sqlite3.Connection
+def test_connection(empty_database):
+    assert type(empty_database.connection) is sqlite3.Connection
 
 def test_create_tables(empty_database):
-    cursor = empty_database._connection.cursor()
+    cursor = empty_database.connection.cursor()
 
     cursor.execute("""SELECT count(name) FROM sqlite_master WHERE type='table' AND name='pmids'""")
     assert cursor.fetchone()[0] == 1
@@ -44,7 +44,7 @@ def test_create_tables(empty_database):
 def test_insert_id(empty_database):
     id = 22331878
     empty_database.insert_id(id)
-    cursor = empty_database._connection.cursor()
+    cursor = empty_database.connection.cursor()
     cursor.execute("""SELECT * FROM pmids WHERE pmid = ?""", [id])
     result = cursor.fetchall()
     cursor.close()
@@ -63,7 +63,7 @@ def test_insert_publication(dummy_database, pubmed_search):
     publication = pubmed_search.get_publication(id)
     dummy_database.insert_publication(id, publication)
 
-    cursor = dummy_database._connection.cursor()
+    cursor = dummy_database.connection.cursor()
     cursor.execute("""SELECT * FROM publications WHERE pmid = ?""", [id])
     result = cursor.fetchall()
     cursor.close()
@@ -86,7 +86,7 @@ def test_insert_publication_without_foreign_key(empty_database, pubmed_search):
 
 def test_update_fetched_publication(dummy_database):
     id = 22331878
-    cursor = dummy_database._connection.cursor()
+    cursor = dummy_database.connection.cursor()
     cursor.execute("""SELECT * FROM pmids WHERE pmid = ?""", [id])
     result = cursor.fetchall()
     cursor.close()
@@ -97,7 +97,7 @@ def test_update_fetched_publication(dummy_database):
 
     dummy_database.update_fetched_publication(id)
 
-    cursor = dummy_database._connection.cursor()
+    cursor = dummy_database.connection.cursor()
     cursor.execute("""SELECT * FROM pmids WHERE pmid = ?""", [id])
     result = cursor.fetchall()
     cursor.close()
@@ -108,7 +108,7 @@ def test_update_fetched_publication(dummy_database):
 
 def test_update_fetched_publication_failed(dummy_database):
     id = 22331879
-    cursor = dummy_database._connection.cursor()
+    cursor = dummy_database.connection.cursor()
     cursor.execute("""SELECT * FROM pmids WHERE pmid = ?""", [id])
     result = cursor.fetchall()
     cursor.close()
@@ -119,7 +119,7 @@ def test_update_fetched_publication_failed(dummy_database):
 
     dummy_database.update_fetched_publication(id, failed=1)
 
-    cursor = dummy_database._connection.cursor()
+    cursor = dummy_database.connection.cursor()
     cursor.execute("""SELECT * FROM pmids WHERE pmid = ?""", [id])
     result = cursor.fetchall()
     cursor.close()
@@ -128,9 +128,9 @@ def test_update_fetched_publication_failed(dummy_database):
     assert result[0][1] == 0
     assert result[0][2] == 1
 
-def test_get_new_ids(dummy_database):
-    new_pmids = dummy_database.get_new_ids()
-    cursor = dummy_database._connection.cursor()
+def test_select_new_ids(dummy_database):
+    new_pmids = dummy_database.select_new_ids()
+    cursor = dummy_database.connection.cursor()
     cursor.execute("""SELECT pmid FROM pmids WHERE new = 1""")
     result = cursor.fetchall()
     cursor.close()
@@ -142,8 +142,8 @@ def test_get_new_ids(dummy_database):
 
     dummy_database.update_fetched_publication(22331879, new=0)
 
-    new_pmids = dummy_database.get_new_ids()
-    cursor = dummy_database._connection.cursor()
+    new_pmids = dummy_database.select_new_ids()
+    cursor = dummy_database.connection.cursor()
     cursor.execute("""SELECT pmid FROM pmids WHERE new = 1""")
     result = cursor.fetchall()
     cursor.close()
@@ -152,11 +152,11 @@ def test_get_new_ids(dummy_database):
     assert len(new_pmids) == 1
     assert new_pmids[0] == result[0][0]
 
-def test_get_failed_ids(dummy_database):
+def test_select_failed_ids(dummy_database):
     dummy_database.update_fetched_publication(22331879, new=0, failed=1)
 
-    failed_pmids = dummy_database.get_failed_ids()
-    cursor = dummy_database._connection.cursor()
+    failed_pmids = dummy_database.select_failed_ids()
+    cursor = dummy_database.connection.cursor()
     cursor.execute("""SELECT pmid FROM pmids WHERE failed = 1""")
     result = cursor.fetchall()
     cursor.close()

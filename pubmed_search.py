@@ -6,111 +6,94 @@ from pubmed_lookup import PubMedLookup, Publication
 import logging
 import sys
 
-class Database(object):
+class Database():
     def __init__(self, database: str):
-        self._connection = self.__create_connection(database)
-        self._create_tables()
+        self.__connection = sqlite3.connect(database)
+        self.__create_tables()
 
-    def __create_connection(self, database: str) -> sqlite3.Connection:
-        conn = sqlite3.connect(database)
-        return conn
+    @property
+    def connection(self) -> sqlite3.Connection:
+        return self.__connection
 
-    def _create_tables(self):
+    def __execute_query(self, *args) -> list:
         try:
-            cursor = self._connection.cursor()
-            cursor.execute("""PRAGMA foreign_keys=on;""")
-            cursor.execute("""
+            cursor = self.connection.cursor()
+            cursor.execute(*args)
+            self.connection.commit()
+            result = cursor.fetchall()
+        finally:
+            cursor.close()
+        return result
+
+    def __create_tables(self):
+        self.__execute_query("""PRAGMA foreign_keys=on;""")
+        self.__execute_query("""
             CREATE TABLE IF NOT EXISTS pmids (
-                pmid INTEGER NOT NULL PRIMARY KEY,
-                new BOOLEAN NOT NULL CHECK (new IN (0,1)),
-                failed BOOLEAN NOT NULL CHECK (failed IN (0,1))
-            );""")
+            pmid INTEGER NOT NULL PRIMARY KEY,
+            new BOOLEAN NOT NULL CHECK (new IN (0,1)),
+            failed BOOLEAN NOT NULL CHECK (failed IN (0,1))
+        );""")
 
-            cursor.execute("""
+        self.__execute_query("""
             CREATE TABLE IF NOT EXISTS publications (
-                pmid INTEGER NOT NULL,
-                title TEXT,
-                authors TEXT,
-                journal TEXT,
-                year INTEGER,
-                month INTEGER,
-                day INTEGER,
-                abstract TEXT,
-                FOREIGN KEY(pmid) REFERENCES pmids(pmid)
-            );""")
+            pmid INTEGER NOT NULL,
+            title TEXT,
+            authors TEXT,
+            journal TEXT,
+            year INTEGER,
+            month INTEGER,
+            day INTEGER,
+            abstract TEXT,
+            FOREIGN KEY(pmid) REFERENCES pmids(pmid)
+        );""")
 
-            self._connection.commit()
-        finally:
-            cursor.close()
-    
     def insert_id(self, id: int):
-        try:
-            cursor = self._connection.cursor()
-            cursor.execute("INSERT INTO pmids (pmid, new, failed) VALUES (?, ?, ?)", [id, 1, 0])
-            self._connection.commit()
-        finally:
-            cursor.close()
-    
+        self.__execute_query("INSERT INTO pmids (pmid, new, failed) VALUES (?, ?, ?)", [id, 1, 0])
+
     def insert_publication(self, id: int, publication: Publication):
-        try:
-            cursor = self._connection.cursor()
-            cursor.execute("""INSERT INTO publications (pmid, title, authors, journal, year, month, day, abstract)
+        self.__execute_query("""INSERT INTO publications (pmid, title, authors, journal, year, month, day, abstract)
                                     VALUES (?,?,?,?,?,?,?,?)""",
-                                    [id,publication.title, publication.authors, publication.journal,
-                                    publication.year, publication.month, publication.day, publication.abstract])
-            self._connection.commit()
-        finally:
-            cursor.close()
+                             [id, publication.title, publication.authors, publication.journal,
+                              publication.year, publication.month, publication.day, publication.abstract])
 
-    def update_fetched_publication(self, id: int, new:int=0, failed:int=0):
-        try:
-            cursor = self._connection.cursor()
-            cursor.execute("""UPDATE pmids SET new = ?, failed = ? WHERE pmid = ?""", [new, failed, id])
-            self._connection.commit()
-        finally:
-            cursor.close()
-    
-    def get_new_ids(self):
-        try:
-            cursor = self._connection.cursor()
-            cursor.execute("""SELECT pmid FROM pmids WHERE new = 1""")
-            self._connection.commit()
-            result = cursor.fetchall()
-            cursor.close()
-            ids = [id[0] for id in result]
-            return ids
-        finally:
-            cursor.close()
-    
-    def get_failed_ids(self):
-        try:
-            cursor = self._connection.cursor()
-            cursor.execute("""SELECT pmid FROM pmids WHERE failed = 1""")
-            self._connection.commit()
-            result = cursor.fetchall()
-            cursor.close()
-            ids = [id[0] for id in result]
-            return ids
-        finally:
-            cursor.close()
+    def update_fetched_publication(self, id: int, new: int = 0, failed: int = 0):
+        self.__execute_query("""UPDATE pmids SET new = ?, failed = ? WHERE pmid = ?""", [new, failed, id])
 
-class PubmedSearch(object):
+    def select_new_ids(self) -> list:
+        result = self.__execute_query("""SELECT pmid FROM pmids WHERE new = 1""")
+        ids = [id[0] for id in result]
+        return ids
+
+    def select_failed_ids(self) -> list:
+        result = self.__execute_query("""SELECT pmid FROM pmids WHERE failed = 1""")
+        ids = [id[0] for id in result]
+        return ids
+
+class PubmedSearch():
     def __init__(self, email: str):
-        self._email = email
+        self.__email = email
+    
+    @property
+    def email(self) -> str:
+        return self.__email
+
+    @email.setter
+    def email(self, email: str):
+        self.__email = email
 
     def get_ids(self, search_query: str, start: int = 0, max: int = 100000) -> list:
-        Entrez.email = self._email
-        handle = Entrez.esearch(
-            db="pubmed", term=search_query, retstart=start, retmax=max)
+        Entrez.email = self.email
+        handle = Entrez.esearch(db="pubmed", term=search_query, retstart=start, retmax=max)
         record = Entrez.read(handle)
         return list(record["IdList"])
 
-    def get_publication(self, pubmedID: str) -> Publication:
-        lookup = PubMedLookup(pubmedID, self._email)
+    def get_publication(self, pubmedID: int) -> Publication:
+        lookup = PubMedLookup(pubmedID, self.email)
         return Publication(lookup)
 
 def _parse_args(args: list):
-    parser = argparse.ArgumentParser(description='Get publication data from PubMed.')
+    parser = argparse.ArgumentParser(
+        description='Get publication data from PubMed.')
     parser.add_argument(
         'email', type=str, help='Identify yourself so NCBI can contact you in case of excessive requests')
     parser.add_argument('search_query', type=str,
@@ -120,16 +103,18 @@ def _parse_args(args: list):
     parser.add_argument('-m', '--max', type=int,
                         help='Total number of PMIDs from the retrieved set. Max: 100,000 records. (default: 100000)', default=100000)
     parser.add_argument('-o', '--output', type=str,
-                        help='Specify an existing database. (default: create or connect to a database named after the search query).')                    
+                        help='Specify an existing database. (default: create or connect to a database named after the search query).')
     parser.add_argument('-r', '--retry', action='store_true',
                         help='Try to fetch again any PMIDs marked as failed in the database.', default=False)
     return parser.parse_args()
 
+
 if __name__ == '__main__':
-    
+
     args = _parse_args(sys.argv[1:])
 
-    logging.basicConfig(filename=f'{args.search_query}.log', format='%(asctime)s - %(message)s', level=logging.INFO)
+    logging.basicConfig(filename=f'{args.search_query}.log',
+                        format='%(asctime)s - %(message)s', level=logging.INFO)
     logging.info(f'Search query: {args.search_query}')
 
     if args.output:
@@ -137,12 +122,13 @@ if __name__ == '__main__':
     else:
         database = Database(f'{args.search_query}.db')
 
-    print(f'Getting PubMed IDs (PMID) for articles related to search query "{args.search_query}"...')
+    print(
+        f'Getting PubMed IDs (PMID) for articles related to search query "{args.search_query}"...')
     search = PubmedSearch(args.email)
     pubmed_ids = search.get_ids(args.search_query, args.start, args.max)
     print(f'{len(pubmed_ids)} PMIDs where found.')
     logging.info(f'{len(pubmed_ids)} PMIDs where found.')
-    
+
     print('Saving PMIDs to the database...')
     for id in pubmed_ids:
         try:
@@ -151,11 +137,12 @@ if __name__ == '__main__':
             continue
 
     if args.retry:
-        pubmed_ids = database.get_new_ids() + database.get_failed_ids()
-        print(f'{len(database.get_new_ids())} PMIDs are marked as NEW in the database.')
-        print(f'{len(database.get_failed_ids())} PMIDs are marked as FAILED in the database.')
+        pubmed_ids = database.select_new_ids() + database.select_failed_ids()
+        print(f'{len(database.select_new_ids())} PMIDs are marked as NEW in the database.')
+        print(
+            f'{len(database.select_failed_ids())} PMIDs are marked as FAILED in the database.')
     else:
-        pubmed_ids = database.get_new_ids()
+        pubmed_ids = database.select_new_ids()
         print(f'{len(pubmed_ids)} PMIDs are marked as NEW in the database.')
 
     print('Fetching publications...\n')
@@ -174,7 +161,9 @@ if __name__ == '__main__':
             database.update_fetched_publication(id, failed=1)
             count_failed = count_failed + 1
         finally:
-            print(f'  Successful: {count_success} | Failed: {count_failed} | Remaining: {total-count_success-count_failed}', end='\r', flush=True)
-    
+            print(
+                f'  Successful: {count_success} | Failed: {count_failed} | Remaining: {total-count_success-count_failed}', end='\r', flush=True)
+
+    database.connection.close()
     print("\nFinished!")
     logging.info(f'Successful: {count_success} | Failed: {count_failed}')
