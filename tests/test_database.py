@@ -5,14 +5,14 @@ import os
 
 @pytest.fixture
 def database_name():
-    return 'test.db'
+    return 'test'
 
 @pytest.fixture
 def empty_database(database_name):
-    db = Database(database_name)
+    db = Database(f'{database_name}.db')
     yield db
     db.connection.close()
-    os.remove(database_name)
+    os.remove(f'{database_name}.db')
 
 @pytest.fixture
 def pubmed_search():
@@ -20,14 +20,14 @@ def pubmed_search():
 
 @pytest.fixture
 def dummy_database(database_name, pubmed_search):
-    db = Database(database_name)
+    db = Database(f'{database_name}.db')
     db.insert_id(22331878)
     db.insert_publication(22331878, pubmed_search.get_publication(22331878))
     db.insert_id(22331879)
     db.insert_publication(22331879, pubmed_search.get_publication(22331879))
     yield db
     db.connection.close()
-    os.remove(database_name)
+    os.remove(f'{database_name}.db')
 
 def test_connection(empty_database):
     assert type(empty_database.connection) is sqlite3.Connection
@@ -164,3 +164,8 @@ def test_select_failed_ids(dummy_database):
     assert len(result) == 1
     assert len(failed_pmids) == 1
     assert failed_pmids[0] == result[0][0]
+
+def test_export_to_csv(dummy_database, database_name):
+    dummy_database.export_to_csv(f'{database_name}.csv')
+    assert os.path.exists(f'{database_name}.csv') == True
+    os.remove(f'{database_name}.csv')

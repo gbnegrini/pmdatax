@@ -6,6 +6,7 @@ from Bio import Entrez
 from pubmed_lookup import PubMedLookup, Publication
 import logging
 import sys
+import pandas as pd
 
 class Database():
     def __init__(self, database: str):
@@ -70,6 +71,10 @@ class Database():
         ids = [id[0] for id in result]
         return ids
 
+    def export_to_csv(self, output_name):
+        table = pd.read_sql_query("SELECT * FROM publications", self.connection)
+        table.to_csv(output_name, index=None, header=True, sep='\t')
+
 class PubmedSearch():
     def __init__(self, email: str):
         self.__email = email
@@ -92,56 +97,38 @@ class PubmedSearch():
         lookup = PubMedLookup(pubmedID, self.email)
         return Publication(lookup)
 
-def _parse_args(args: list):
-    parser = argparse.ArgumentParser(
-        description='Get publication data from PubMed.')
-    parser.add_argument(
+def _subparser_fetch(subparsers):
+    fetch = subparsers.add_parser('fetch', help='Fetch PubMed data')
+    fetch.add_argument('search_query', type=str,
+                        help='Search query for PubMed articles. Use quotation marks to write more than a single word')
+    fetch.add_argument('database_name', type=str,
+                        help='Create or connect to an existing <database_name>.db file')
+    fetch.add_argument(
         'email', type=str, help='Identify yourself so NCBI can contact you in case of excessive requests')
-    parser.add_argument('search_query', type=str,
-                        help='Search term for Pubmed database')
-    parser.add_argument('-s', '--start', type=int,
-                        help='Sequential index of the first PMID from retrieved set. (default: 0)', default=0)
-    parser.add_argument('-m', '--max', type=int,
-                        help='Total number of PMIDs from the retrieved set. Max: 100,000 records. (default: 100000)', default=100000)
-    parser.add_argument('-o', '--output', type=str,
-                        help='Specify an existing database. (default: create or connect to a database using the search query as a file name).')
-    parser.add_argument('-r', '--retry', action='store_true',
-                        help='Try to fetch again any PMIDs marked as failed in the database.', default=False)
+    fetch.add_argument('-s', '--start', type=int,
+                        help='Sequential index of the first PMID from retrieved set (default: 0)', default=0)
+    fetch.add_argument('-m', '--max', type=int,
+                        help='Total number of PMIDs from the retrieved set. Max: 100,000 records (default: 100000)', default=100000)
+
+def _subparser_retry(subparsers):
+    retry = subparsers.add_parser('retry', help='Try to fetch again any PMIDs marked as failed in the database')
+    retry.add_argument('database_name', type=str,help='Connect to an existing <database_name>.db file')
+    retry.add_argument(
+        'email', type=str, help='Identify yourself so NCBI can contact you in case of excessive requests')
+
+def _subparser_export(subparsers):
+    export = subparsers.add_parser('export', help='Export publication data from the database to a <database_name>.csv file')
+    export.add_argument('database_name', type=str,help='Connect to an existing <database_name>.db file')
+
+def _parse_args(args: list):
+    parser = argparse.ArgumentParser(description='Get publication data from PubMed')
+    subparsers = parser.add_subparsers(dest="command")
+    _subparser_fetch(subparsers)
+    _subparser_retry(subparsers)
+    _subparser_export(subparsers)
     return parser.parse_args()
 
-
-if __name__ == '__main__':
-    
-    args = _parse_args(sys.argv[1:])
-    logging.basicConfig(filename=f'{args.search_query}.log',format='%(asctime)s - %(message)s', level=logging.INFO)
-    logging.info(f'Search query: {args.search_query}')
-
-    if args.output:
-        database = Database(args.output)
-    else:
-        database = Database(f'{args.search_query}.db')
-
-    print(f'Getting PubMed IDs (PMID) for articles related to: "{args.search_query}"...')
-    search = PubmedSearch(args.email)
-    pubmed_ids = search.get_ids(args.search_query, args.start, args.max)
-    
-    print(f'  {len(pubmed_ids)} PMIDs where found.')
-    logging.info(f'{len(pubmed_ids)} PMIDs where found.')
-
-    print('Saving PMIDs to the database...')
-    for id in pubmed_ids:
-        try:
-            database.insert_id(id)
-        except sqlite3.IntegrityError:  # will raise on update/retry because of UNIQUE pmid constraint
-            continue
-    
-    pubmed_ids = database.select_new_ids()
-    print(f'  {len(pubmed_ids)} PMIDs are marked as NEW in the database.')
-    if args.retry:
-        failed_ids = database.select_failed_ids()
-        pubmed_ids = pubmed_ids + failed_ids
-        print(f'  {len(failed_ids)} PMIDs are marked as FAILED in the database.')
-
+def _fetch_publications(database: Database, search: PubmedSearch, pubmed_ids: list):
     count_success = 0
     count_fail = 0
     count_total = len(pubmed_ids)
@@ -160,7 +147,44 @@ if __name__ == '__main__':
         finally:
             print(f'  Successful: {count_success} | Failed: {count_fail} | Remaining: {count_total-count_success-count_fail}', end='\r', flush=True)
 
-    database.connection.close()
+if __name__ == '__main__':
+    
+    args = _parse_args(sys.argv[1:])
+    logging.basicConfig(filename=f'{args.database_name}_error.log',format='%(asctime)s - %(message)s', level=logging.INFO)
 
+    if args.command == 'fetch':
+        database = Database(f'{args.database_name}.db')
+        search = PubmedSearch(args.email)
+
+        print(f'Getting PubMed IDs (PMID) for articles related to: "{args.search_query}"...')
+        pubmed_ids = search.get_ids(args.search_query, args.start, args.max)
+        print(f'  {len(pubmed_ids)} PMIDs where found.')
+
+        print('Saving PMIDs to the database...')
+        for id in pubmed_ids:
+            try:
+                database.insert_id(id)
+            except sqlite3.IntegrityError:  # will raise on update of UNIQUE pmid constraint
+                continue
+        
+        pubmed_ids = database.select_new_ids()
+        print(f'  {len(pubmed_ids)} PMIDs are marked as NEW in the database.')
+
+        _fetch_publications(database, search, pubmed_ids)
+
+    elif args.command == 'retry':
+        database = Database(f'{args.database_name}.db')
+        search = PubmedSearch(args.email)
+
+        pubmed_ids = database.select_failed_ids()
+        print(f'  {len(pubmed_ids)} PMIDs are marked as FAILED in the database.')
+        _fetch_publications(database, search, pubmed_ids)
+        
+    elif args.command == 'export':
+        database = Database(f'{args.database_name}.db')
+        database.export_to_csv(f'{args.database_name}.csv')
+
+    database.connection.close()
+    
     print("\nFinished!")
-    logging.info(f'Successful: {count_success} | Failed: {count_fail}')
+    
