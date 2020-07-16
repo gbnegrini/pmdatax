@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import argparse
 import sqlite3
 import os
