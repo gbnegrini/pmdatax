@@ -1,5 +1,5 @@
 import pytest
-from pubmed_search import Database, PubmedSearch
+from pubmed_extraction import Database, PubmedSearch
 import sqlite3
 import os
 
