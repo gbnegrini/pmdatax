@@ -71,9 +71,9 @@ class Database():
         ids = [id[0] for id in result]
         return ids
 
-    def export_to_csv(self, output_name):
+    def export_to_csv(self, output_name: str):
         table = pd.read_sql_query("SELECT * FROM publications", self.connection)
-        table.to_csv(output_name, index=None, header=True, sep='\t')
+        table.to_csv(output_name, index=None, header=True)
 
 class PubmedSearch():
     def __init__(self, email: str):
@@ -97,89 +97,73 @@ class PubmedSearch():
         lookup = PubMedLookup(pubmedID, self.email)
         return Publication(lookup)
 
-def _subparser_fetch(subparsers):
-    fetch = subparsers.add_parser('fetch', help='Fetch PubMed data')
-    fetch.add_argument('search_query', type=str,
-                        help='Search query for PubMed articles. Use quotation marks to write more than a single word')
-    fetch.add_argument('database_name', type=str,
-                        help='Create or connect to an existing <database_name>.db file')
-    fetch.add_argument(
-        'email', type=str, help='Identify yourself so NCBI can contact you in case of excessive requests')
-    fetch.add_argument('-s', '--start', type=int,
-                        help='Sequential index of the first PMID from retrieved set (default: 0)', default=0)
-    fetch.add_argument('-m', '--max', type=int,
-                        help='Total number of PMIDs from the retrieved set. Max: 100,000 records (default: 100000)', default=100000)
+def _parse_args(args: list) -> argparse.ArgumentParser.parse_args:
+    parser = argparse.ArgumentParser(description='Get publication data from PubMed articles! PMID, title, authors, journal, year, month, day and abstract.')
+    subparsers = parser.add_subparsers(dest="command")
 
-def _subparser_retry(subparsers):
+    fetch = subparsers.add_parser('fetch', help='Fetch PubMed data')
+    fetch.add_argument('search_query', type=str,help='Search query for PubMed articles. Use quotation marks to write more than a single word')
+    fetch.add_argument('database_name', type=str, help='Create or connect to an existing <database_name>.db file')
+    fetch.add_argument('email', type=str, help='Identify yourself so NCBI can contact you in case of excessive requests')
+    fetch.add_argument('-s', '--start', type=int, help='Sequential index of the first PMID from retrieved set (default: 0)', default=0)
+    fetch.add_argument('-m', '--max', type=int, help='Total number of PMIDs from the retrieved set. Max: 100,000 records (default: 100000)', default=100000)
+    
     retry = subparsers.add_parser('retry', help='Try to fetch again any PMIDs marked as failed in the database')
     retry.add_argument('database_name', type=str,help='Connect to an existing <database_name>.db file')
-    retry.add_argument(
-        'email', type=str, help='Identify yourself so NCBI can contact you in case of excessive requests')
-
-def _subparser_export(subparsers):
+    retry.add_argument('email', type=str, help='Identify yourself so NCBI can contact you in case of excessive requests')
+    
     export = subparsers.add_parser('export', help='Export publication data from the database to a <database_name>.csv file')
     export.add_argument('database_name', type=str,help='Connect to an existing <database_name>.db file')
-
-def _parse_args(args: list):
-    parser = argparse.ArgumentParser(description='Get publication data from PubMed')
-    subparsers = parser.add_subparsers(dest="command")
-    _subparser_fetch(subparsers)
-    _subparser_retry(subparsers)
-    _subparser_export(subparsers)
+    
     return parser.parse_args()
 
-def _fetch_publications(database: Database, search: PubmedSearch, pubmed_ids: list):
-    count_success = 0
-    count_fail = 0
-    count_total = len(pubmed_ids)
-
-    print('Fetching publications...')
-    for id in pubmed_ids:
-        try:
-            publication = search.get_publication(id)
-            database.insert_publication(id, publication)
-            database.update_fetched_publication(id)
-            count_success = count_success + 1
-        except (TimeoutError, RuntimeError, TypeError):
-            logging.exception(f'ID: {id}')
-            database.update_fetched_publication(id, failed=1)
-            count_fail = count_fail + 1
-        finally:
-            print(f'  Successful: {count_success} | Failed: {count_fail} | Remaining: {count_total-count_success-count_fail}', end='\r', flush=True)
-
 if __name__ == '__main__':
-    
+
     args = _parse_args(sys.argv[1:])
     logging.basicConfig(filename=f'{args.database_name}_error.log',format='%(asctime)s - %(message)s', level=logging.INFO)
 
-    if args.command == 'fetch':
+    if args.command == 'fetch' or args.command == 'retry':
+        
         database = Database(f'{args.database_name}.db')
         search = PubmedSearch(args.email)
 
-        print(f'Getting PubMed IDs (PMID) for articles related to: "{args.search_query}"...')
-        pubmed_ids = search.get_ids(args.search_query, args.start, args.max)
-        print(f'  {len(pubmed_ids)} PMIDs where found.')
+        if args.command == 'fetch':
 
-        print('Saving PMIDs to the database...')
+            print(f'Getting PubMed IDs (PMID) for articles related to: "{args.search_query}"...')
+            pubmed_ids = search.get_ids(args.search_query, args.start, args.max)
+            print(f'  {len(pubmed_ids)} PMIDs where found.')
+
+            print('Saving PMIDs to the database...')
+            for id in pubmed_ids:
+                try:
+                    database.insert_id(id)
+                except sqlite3.IntegrityError:  # will raise on update because of UNIQUE pmid constraint
+                    continue
+            
+            pubmed_ids = database.select_new_ids()
+            print(f'  {len(pubmed_ids)} PMIDs are marked as NEW in the database.')
+
+        elif args.command == 'retry':
+            pubmed_ids = database.select_failed_ids()
+            print(f'  {len(pubmed_ids)} PMIDs are marked as FAILED in the database.')
+
+        print('Fetching publications...')
+        count_success = 0
+        count_fail = 0
+        count_total = len(pubmed_ids)
         for id in pubmed_ids:
             try:
-                database.insert_id(id)
-            except sqlite3.IntegrityError:  # will raise on update of UNIQUE pmid constraint
-                continue
-        
-        pubmed_ids = database.select_new_ids()
-        print(f'  {len(pubmed_ids)} PMIDs are marked as NEW in the database.')
-
-        _fetch_publications(database, search, pubmed_ids)
-
-    elif args.command == 'retry':
-        database = Database(f'{args.database_name}.db')
-        search = PubmedSearch(args.email)
-
-        pubmed_ids = database.select_failed_ids()
-        print(f'  {len(pubmed_ids)} PMIDs are marked as FAILED in the database.')
-        _fetch_publications(database, search, pubmed_ids)
-        
+                publication = search.get_publication(id)
+                database.insert_publication(id, publication)
+                database.update_fetched_publication(id)
+                count_success = count_success + 1
+            except (TimeoutError, RuntimeError, TypeError):
+                logging.exception(f'ID: {id}')
+                database.update_fetched_publication(id, failed=1)
+                count_fail = count_fail + 1
+            finally:
+                print(f'  Successful: {count_success} | Failed: {count_fail} | Remaining: {count_total-count_success-count_fail}', end='\r', flush=True)
+            
     elif args.command == 'export':
         database = Database(f'{args.database_name}.db')
         database.export_to_csv(f'{args.database_name}.csv')
