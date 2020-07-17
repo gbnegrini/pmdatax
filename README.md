@@ -130,14 +130,14 @@ csv file will look like this:
 | 22331878 | Arabidopsis synchronizes jasmonate-mediated defense with insect circadian behavior. | "Goodspeed D, Chehab EW, Min-Venditti A, Braam J, Covington MF" | Proc Natl Acad Sci U S Arnal | 2012 | 3 | 20 | "Diverse life forms have evolved internal clocks[...]" |
 
 ## Example
-Let's fetch some data about cancer publications. Note we're using the `--max` flag in this example so it doesn't take long to run.
+Let's fetch some data about COVID-19 publications. Note we're using the `--max` flag in this example so it doesn't take long to run.
 
-`python pmdatax.py fetch "cancer OR tumor" my_cancer_database your_email@somethingemail.com --max 5`
+`python pmdatax.py fetch "covid-19 OR sars-cov2" my_covid_database your_email@somethingemail.com --max 10`
 
 If there are any failed publications, try again with: 
 
-`python pmdatax.py retry my_cancer_database your_email@somethingemail.com`
+`python pmdatax.py retry my_covid_database your_email@somethingemail.com`
 
 Once everything is finished, export to csv if you don't want to work with SQL:
 
-`python pmdatax.py export my_cancer_database`
+`python pmdatax.py export my_covid_database`
