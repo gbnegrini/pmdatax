@@ -1,5 +1,5 @@
 import pytest
-from pubmed_extraction import Database, PubmedSearch
+from pmdatax import Database, PubmedSearch
 import sqlite3
 import os
 
@@ -168,4 +168,4 @@ def test_select_failed_ids(dummy_database):
 def test_export_to_csv(dummy_database, database_name):
     dummy_database.export_to_csv(f'{database_name}.csv')
     assert os.path.exists(f'{database_name}.csv') == True
-    os.remove(f'{database_name}.csv')
+    #os.remove(f'{database_name}.csv')

@@ -1,5 +1,5 @@
 import pytest
-from pubmed_extraction import PubmedSearch
+from pmdatax import PubmedSearch
 
 class DummyPub():
     title = 'Arabidopsis synchronizes jasmonate-mediated defense with insect circadian behavior.'
