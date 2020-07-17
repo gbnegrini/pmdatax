@@ -4,7 +4,7 @@
 # PMdataX - PubMed data eXtraction
 > A command-line tool to fetch data from articles available on PubMed
 
-[![Build Status](https://travis-ci.com/gbnegrini/pubmed-text-mining.svg?token=QivxGnspzs4tLzQsGSae&branch=master)](https://travis-ci.com/gbnegrini/pubmed-text-mining)
+[![Build Status](https://travis-ci.com/gbnegrini/pmdatax.svg?token=QivxGnspzs4tLzQsGSae&branch=master)](https://travis-ci.com/gbnegrini/pmdatax)
 [![Generic badge](https://img.shields.io/badge/python-3.6|3.7|3.8-blue.svg)](https://shields.io/)
 ![LICENSE](https://img.shields.io/github/license/gbnegrini/pubmed-text-mining)
 
