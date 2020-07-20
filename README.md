@@ -8,7 +8,7 @@
 [![Generic badge](https://img.shields.io/badge/python-3.6|3.7|3.8-blue.svg)](https://shields.io/)
 ![LICENSE](https://img.shields.io/github/license/gbnegrini/pubmed-text-mining)
 
-For a given search query, PMdataX uses [Bio.Entrez](https://biopython.org/docs/1.74/api/Bio.Entrez.html) to get the PubMed IDs from related articles. Each retrieved PubMed ID is then used to fetch its publication data with [pubmed-lookup](https://github.com/mfcovington/pubmed-lookup). All data is saved to a SQLite database and can be easily exported to a csv file. Currently, these data include: PMID, title, authors, journal, year, month, day and abstract.
+For a given search query, PMdataX uses [Bio.Entrez](https://biopython.org/docs/1.74/api/Bio.Entrez.html) to get the PubMed IDs from related articles. Each retrieved PubMed ID is then used to fetch its publication data with [pubmed-lookup](https://github.com/mfcovington/pubmed-lookup). All data is saved to a SQLite database and can be easily exported to a csv file. Currently, these data include: <b>PMID, title, authors, journal, year, month, day, abstract, publication type, DOI and URL</b>.
 
 ## Requirements
 - python>=3.6
@@ -121,13 +121,16 @@ There are two tables organized as follows:
     - month INTEGER
     - day INTEGER
     - abstract TEXT
+    - type TEXT
+    - doi TEXT
+    - url TEXT
 
 ### CSV
 csv file will look like this:
 
-| pmid | title | authors | journal | year | month | day | abstract |
-| --------- | --------- | --------- | --------- | --------- | --------- | --------- | --------- |
-| 22331878 | Arabidopsis synchronizes jasmonate-mediated defense with insect circadian behavior. | "Goodspeed D, Chehab EW, Min-Venditti A, Braam J, Covington MF" | Proc Natl Acad Sci U S Arnal | 2012 | 3 | 20 | "Diverse life forms have evolved internal clocks[...]" |
+| pmid | title | authors | journal | year | month | day | abstract | type | doi | url |
+| --------- | --------- | --------- | --------- | --------- | --------- | --------- | --------- | --------- | --------- | --------- |
+| 22331878 | Arabidopsis synchronizes jasmonate-mediated defense with insect circadian behavior. | "Goodspeed D, Chehab EW, Min-Venditti A, Braam J, Covington MF" | Proc Natl Acad Sci U S Arnal | 2012 | 3 | 20 | "Diverse life forms have evolved internal clocks[...]" | Journal Article | 10.1073/pnas.1116368109 | https://www.pnas.org/content/109/12/4674 |
 
 ## Example
 Let's fetch some data about COVID-19 publications. Note we're using the `--max` flag in this example so it doesn't take long to run.

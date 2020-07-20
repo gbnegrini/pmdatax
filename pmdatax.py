@@ -46,6 +46,9 @@ class Database():
             month INTEGER,
             day INTEGER,
             abstract TEXT,
+            type TEXT,
+            doi TEXT,
+            url TEXT,
             FOREIGN KEY(pmid) REFERENCES pmids(pmid)
         );""")
 
@@ -53,10 +56,10 @@ class Database():
         self.__execute_query("INSERT INTO pmids (pmid, new, failed) VALUES (?, ?, ?)", [id, 1, 0])
 
     def insert_publication(self, id: int, publication: Publication):
-        self.__execute_query("""INSERT INTO publications (pmid, title, authors, journal, year, month, day, abstract)
-                                    VALUES (?,?,?,?,?,?,?,?)""",
+        self.__execute_query("""INSERT INTO publications (pmid, title, authors, journal, year, month, day, abstract, type, doi, url)
+                                    VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
                              [id, publication.title, publication.authors, publication.journal,
-                              publication.year, publication.month, publication.day, publication.abstract])
+                              publication.year, publication.month, publication.day, publication.abstract, ', '.join(publication.record['PubTypeList']), publication.record['DOI'], publication.url])
 
     def update_fetched_publication(self, id: int, new: int = 0, failed: int = 0):
         self.__execute_query("""UPDATE pmids SET new = ?, failed = ? WHERE pmid = ?""", [new, failed, id])

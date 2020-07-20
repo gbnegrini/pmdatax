@@ -77,6 +77,9 @@ def test_insert_publication(dummy_database, pubmed_search):
     assert publication.month == result[0][5]
     assert publication.day == str(result[0][6])
     assert publication.abstract == result[0][7]
+    assert ', '.join(publication.record['PubTypeList']) == result[0][8]
+    assert publication.record['DOI'] == result[0][9]
+    assert publication.url == result[0][10]
 
 def test_insert_publication_without_foreign_key(empty_database, pubmed_search):
     id = 22331878
@@ -168,4 +171,4 @@ def test_select_failed_ids(dummy_database):
 def test_export_to_csv(dummy_database, database_name):
     dummy_database.export_to_csv(f'{database_name}.csv')
     assert os.path.exists(f'{database_name}.csv') == True
-    #os.remove(f'{database_name}.csv')
+    os.remove(f'{database_name}.csv')
