@@ -56,10 +56,20 @@ class Database():
         self.__execute_query("INSERT INTO pmids (pmid, new, failed) VALUES (?, ?, ?)", [id, 1, 0])
 
     def insert_publication(self, id: int, publication: Publication):
+        try:
+            publication_type = ', '.join(publication.record['PubTypeList'])
+        except KeyError:
+            publication_type = None
+        
+        try:
+            publication_doi = publication.record['DOI']
+        except KeyError:
+            publication_doi = None
+
         self.__execute_query("""INSERT INTO publications (pmid, title, authors, journal, year, month, day, abstract, type, doi, url)
                                     VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
                              [id, publication.title, publication.authors, publication.journal,
-                              publication.year, publication.month, publication.day, publication.abstract, ', '.join(publication.record['PubTypeList']), publication.record['DOI'], publication.url])
+                              publication.year, publication.month, publication.day, publication.abstract, publication_type, publication_doi, publication.url])
 
     def update_fetched_publication(self, id: int, new: int = 0, failed: int = 0):
         self.__execute_query("""UPDATE pmids SET new = ?, failed = ? WHERE pmid = ?""", [new, failed, id])
