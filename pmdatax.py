@@ -7,6 +7,7 @@ from pubmed_lookup import PubMedLookup, Publication
 import logging
 import sys
 import pandas as pd
+from http.client import InvalidURL
 
 class Database():
     def __init__(self, database: str):
@@ -170,7 +171,7 @@ if __name__ == '__main__':
                 database.insert_publication(id, publication)
                 database.update_fetched_publication(id)
                 count_success = count_success + 1
-            except (TimeoutError, RuntimeError, TypeError):
+            except (TimeoutError, RuntimeError, TypeError, InvalidURL):
                 logging.exception(f'ID: {id}')
                 database.update_fetched_publication(id, failed=1)
                 count_fail = count_fail + 1
