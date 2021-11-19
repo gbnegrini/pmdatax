@@ -11,21 +11,53 @@
 For a given search query, PMdataX uses [Bio.Entrez](https://biopython.org/docs/1.74/api/Bio.Entrez.html) to get the PubMed IDs from related articles. Each retrieved PubMed ID is then used to fetch its publication data with [pubmed-lookup](https://github.com/mfcovington/pubmed-lookup). All data is saved to a SQLite database and can be easily exported to a csv file. Currently, these data include: <b>PMID, title, authors, journal, year, month, day, abstract, publication type, DOI and URL</b>.
 
 ## Requirements
-- python>=3.6
+- python>=3.7
 - biopython==1.76
 - pubmed-lookup==0.2.3
-- pandas==1.0.5
-- pytest==5.4.3 (optional, required only for code testing)
+- pandas==1.3.2
+- pytest==6.2.5 (optional, required only for code testing)
 
 ## Installation
 Clone this repository, make sure you have installed the requirements mentioned above and you are good to go.
 This can be easily achieved by running: 
 ```
 git clone https://github.com/gbnegrini/pmdatax.git
+cd pmdatax/
 pip install -r requirements.txt
 ```
 
-## Usage
+Alternatively, a **[Docker image](Dockerfile)** is available.
+
+## Quick start
+Let's fetch some data about COVID-19 publications. Note we're using the `--max` flag in this example so it doesn't take long to run.
+
+```bash
+python pmdatax.py fetch "covid-19 OR sars-cov2" my_covid_database your_email@somethingemail.com --max 10
+```
+
+If there are any failed publications, try again with: 
+
+```bash
+python pmdatax.py retry my_covid_database your_email@somethingemail.com
+```
+
+Once everything is finished, export to csv if you don't want to work with SQL:
+
+```bash
+python pmdatax.py export my_covid_database
+```
+
+### Using Docker
+
+You can use the image to run the application inside a container.
+
+```bash
+docker build -t pmdatax .
+
+docker run --rm -it -v $(pwd):/app pmdatax python pmdatax.py fetch "covid-19 OR sars-cov2" my_covid_database your_email@somethingemail.com --max 10
+```
+
+## Detailed usage
 PMdataX supports three different commands:
 - fetch
 - retry
@@ -131,16 +163,3 @@ csv file will look like this:
 | pmid | title | authors | journal | year | month | day | abstract | type | doi | url |
 | --------- | --------- | --------- | --------- | --------- | --------- | --------- | --------- | --------- | --------- | --------- |
 | 22331878 | Arabidopsis synchronizes jasmonate-mediated defense with insect circadian behavior. | "Goodspeed D, Chehab EW, Min-Venditti A, Braam J, Covington MF" | Proc Natl Acad Sci U S Arnal | 2012 | 3 | 20 | "Diverse life forms have evolved internal clocks[...]" | Journal Article | 10.1073/pnas.1116368109 | https://www.pnas.org/content/109/12/4674 |
-
-## Example
-Let's fetch some data about COVID-19 publications. Note we're using the `--max` flag in this example so it doesn't take long to run.
-
-`python pmdatax.py fetch "covid-19 OR sars-cov2" my_covid_database your_email@somethingemail.com --max 10`
-
-If there are any failed publications, try again with: 
-
-`python pmdatax.py retry my_covid_database your_email@somethingemail.com`
-
-Once everything is finished, export to csv if you don't want to work with SQL:
-
-`python pmdatax.py export my_covid_database`
