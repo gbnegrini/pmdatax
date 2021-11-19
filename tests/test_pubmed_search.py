@@ -8,7 +8,7 @@ class DummyPub():
     year = str(2012)
     month = 3
     day = str(20)
-    url = 'https://www.pnas.org/content/109/12/4674'
+    url = 'http://dx.doi.org/10.1073/pnas.1116368109'
     pubmed_url = 'http://www.ncbi.nlm.nih.gov/pubmed/22331878'
     citation = 'Goodspeed D, Chehab EW, Min-Venditti A, Braam J, Covington MF (2012). Arabidopsis synchronizes jasmonate-mediated defense with insect circadian behavior. Proc Natl Acad Sci U S A 109(12): 4674-7.'
     minicitation = 'Goodspeed D - Covington MF - 2012 - Proc Natl Acad Sci U S A'
