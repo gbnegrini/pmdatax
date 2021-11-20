@@ -4,8 +4,7 @@
 # PMdataX - PubMed data eXtraction
 > A command-line tool to fetch data from articles available on PubMed
 
-[![Build Status](https://travis-ci.com/gbnegrini/pmdatax.svg?token=QivxGnspzs4tLzQsGSae&branch=master)](https://travis-ci.com/gbnegrini/pmdatax)
-[![Generic badge](https://img.shields.io/badge/python-3.6|3.7|3.8-blue.svg)](https://shields.io/)
+[![Generic badge](https://img.shields.io/badge/python-3.7|3.8|3.9-blue.svg)](https://shields.io/)
 ![LICENSE](https://img.shields.io/github/license/gbnegrini/pmdatax)
 
 For a given search query, PMdataX uses [Bio.Entrez](https://biopython.org/docs/1.74/api/Bio.Entrez.html) to get the PubMed IDs from related articles. Each retrieved PubMed ID is then used to fetch its publication data with [pubmed-lookup](https://github.com/mfcovington/pubmed-lookup). All data is saved to a SQLite database and can be easily exported to a csv file. Currently, these data include: <b>PMID, title, authors, journal, year, month, day, abstract, publication type, DOI and URL</b>.
