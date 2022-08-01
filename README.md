@@ -1,4 +1,3 @@
-
 <img src="https://i.ibb.co/df5ynrX/undraw-text-files-au1q.png" alt="undraw-text-files-au1q" border="0">
 
 # PMdataX - PubMed data eXtraction
@@ -6,6 +5,7 @@
 
 [![Generic badge](https://img.shields.io/badge/python-3.7|3.8|3.9-blue.svg)](https://shields.io/)
 ![LICENSE](https://img.shields.io/github/license/gbnegrini/pmdatax)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fgbnegrini%2Fpmdatax.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fgbnegrini%2Fpmdatax?ref=badge_shield)
 
 For a given search query, PMdataX uses [Bio.Entrez](https://biopython.org/docs/1.74/api/Bio.Entrez.html) to get the PubMed IDs from related articles. Each retrieved PubMed ID is then used to fetch its publication data with [pubmed-lookup](https://github.com/mfcovington/pubmed-lookup). All data is saved to a SQLite database and can be easily exported to a csv file. Currently, these data include: <b>PMID, title, authors, journal, year, month, day, abstract, publication type, DOI and URL</b>.
 
@@ -162,3 +162,6 @@ csv file will look like this:
 | pmid | title | authors | journal | year | month | day | abstract | type | doi | url |
 | --------- | --------- | --------- | --------- | --------- | --------- | --------- | --------- | --------- | --------- | --------- |
 | 22331878 | Arabidopsis synchronizes jasmonate-mediated defense with insect circadian behavior. | "Goodspeed D, Chehab EW, Min-Venditti A, Braam J, Covington MF" | Proc Natl Acad Sci U S Arnal | 2012 | 3 | 20 | "Diverse life forms have evolved internal clocks[...]" | Journal Article | 10.1073/pnas.1116368109 | https://www.pnas.org/content/109/12/4674 |
+
+## License
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fgbnegrini%2Fpmdatax.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fgbnegrini%2Fpmdatax?ref=badge_large)
